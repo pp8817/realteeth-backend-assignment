@@ -40,6 +40,8 @@ dependencies {
 	testImplementation("org.mockito.kotlin:mockito-kotlin:5.4.0")
 	testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
 	testImplementation("org.awaitility:awaitility-kotlin:4.2.1")
+	testImplementation("org.testcontainers:junit-jupiter")
+	testImplementation("org.testcontainers:postgresql")
 	testRuntimeOnly("com.h2database:h2")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }

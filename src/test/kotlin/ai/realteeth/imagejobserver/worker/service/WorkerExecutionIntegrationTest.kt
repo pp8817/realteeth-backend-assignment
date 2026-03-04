@@ -174,7 +174,7 @@ class WorkerExecutionIntegrationTest {
         @JvmStatic
         @DynamicPropertySource
         fun registerMock(registry: DynamicPropertyRegistry) {
-            registry.add("app.mock.base-url") { mockWebServer.url("/").toString().removeSuffix("/") }
+            registry.add("app.mock.base-url") { mockWebServer.url("/mock").toString().removeSuffix("/") }
             registry.add("app.mock.api-key") { "test-api-key" }
             registry.add("app.worker.enabled") { false }
             registry.add("app.worker.id") { "worker-1" }
