@@ -28,8 +28,13 @@ services:
       APP_WORKER_LEASE_SECONDS: "30"
       APP_WORKER_BATCH_SIZE: "5"
       APP_WORKER_MAX_ATTEMPTS: "3"
+      APP_WORKER_STATUS_POLL_INTERVAL_MS: "2000"
+      APP_WORKER_MAX_PROCESSING_SECONDS: "1800"
       APP_MOCK_BASE_URL: "https://dev.realteeth.ai/mock"
-      APP_MOCK_API_KEY: ""   # evaluator can set or you can provide a manual way to issue it
+      APP_MOCK_API_KEY: ""
+      APP_MOCK_AUTO_ISSUE_ENABLED: "true"
+      APP_MOCK_CANDIDATE_NAME: "박상민"
+      APP_MOCK_CANDIDATE_EMAIL: "pp8817@naver.com"
     depends_on:
       postgres:
         condition: service_healthy

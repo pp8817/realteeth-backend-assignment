@@ -26,10 +26,15 @@ app:
     batch-size: ${APP_WORKER_BATCH_SIZE:5}
     max-attempts: ${APP_WORKER_MAX_ATTEMPTS:3}
     poll-interval-ms: ${APP_WORKER_POLL_INTERVAL_MS:1000}
+    status-poll-interval-ms: ${APP_WORKER_STATUS_POLL_INTERVAL_MS:2000}
+    max-processing-seconds: ${APP_WORKER_MAX_PROCESSING_SECONDS:1800}
     threads: ${APP_WORKER_THREADS:4}
   mock:
     base-url: ${APP_MOCK_BASE_URL:https://dev.realteeth.ai/mock}
     api-key: ${APP_MOCK_API_KEY:}
+    auto-issue-enabled: ${APP_MOCK_AUTO_ISSUE_ENABLED:true}
+    candidate-name: ${APP_MOCK_CANDIDATE_NAME:박상민}
+    candidate-email: ${APP_MOCK_CANDIDATE_EMAIL:pp8817@naver.com}
     timeout-ms: ${APP_MOCK_TIMEOUT_MS:5000}
 
 logging:

@@ -19,6 +19,7 @@ import java.util.concurrent.TimeoutException
 class WebClientMockWorkerClient(
     private val mockWorkerWebClient: WebClient,
     private val properties: MockWorkerProperties,
+    private val mockApiKeyProvider: MockApiKeyProvider,
 ) : MockWorkerClient {
 
     override fun issueKey(candidateName: String, email: String): IssueKeyResponse {
@@ -42,12 +43,14 @@ class WebClientMockWorkerClient(
     }
 
     override fun startProcess(imageUrl: String): ProcessStartResponse {
+        val apiKey = mockApiKeyProvider.resolveApiKey()
+
         return execute {
             mockWorkerWebClient.post()
                 .uri("/process")
                 .headers {
-                    if (properties.apiKey.isNotBlank()) {
-                        it.set("X-API-KEY", properties.apiKey)
+                    if (!apiKey.isNullOrBlank()) {
+                        it.set("X-API-KEY", apiKey)
                     }
                 }
                 .bodyValue(ProcessRequest(imageUrl))
