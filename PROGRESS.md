@@ -27,15 +27,15 @@ Goal: Create the initial Spring Boot project and repository structure.
 
 Tasks:
 
-- [ ] Create Spring Boot project (Kotlin + Gradle)
-- [ ] Set base package `ai.realteeth.imagejobserver`
-- [ ] Add dependencies
+- [x] Create Spring Boot project (Kotlin + Gradle)
+- [x] Set base package `ai.realteeth.imagejobserver`
+- [x] Add dependencies
     - spring-boot-starter-web
     - spring-boot-starter-validation
     - spring-boot-starter-data-jpa
     - postgresql
     - test dependencies
-- [ ] Create project package structure
+- [x] Create project package structure
 
 src/main/kotlin/ai/realteeth/imagejobserver
 ```
@@ -44,7 +44,7 @@ src/main/kotlin/ai/realteeth/imagejobserver
 ├ client.mockworker
 └ global
 ```
-- [ ] Commit initial project structure
+- [x] Commit initial project structure
 
 ---
 
@@ -54,15 +54,15 @@ Goal: Implement persistence according to db/schema.sql.
 
 Tasks:
 
-- [ ] Apply `db/schema.sql`
-- [ ] Create Job entity
-- [ ] Create JobResult entity
-- [ ] Implement JobRepository
-- [ ] Implement JobResultRepository
-- [ ] Validate unique constraints
+- [x] Apply `db/schema.sql`
+- [x] Create Job entity
+- [x] Create JobResult entity
+- [x] Implement JobRepository
+- [x] Implement JobResultRepository
+- [x] Validate unique constraints
     - idempotency_key
     - fingerprint
-- [ ] Add entity tests
+- [x] Add entity tests
 
 Completion criteria:
 
@@ -77,23 +77,23 @@ Goal: Implement server endpoints defined in docs/api.md.
 
 Endpoints:
 
-- [ ] POST `/jobs`
-- [ ] GET `/jobs/{jobId}`
-- [ ] GET `/jobs/{jobId}/result`
-- [ ] GET `/jobs`
+- [x] POST `/jobs`
+- [x] GET `/jobs/{jobId}`
+- [x] GET `/jobs/{jobId}/result`
+- [x] GET `/jobs`
 
 Tasks:
 
-- [ ] Implement JobController
-- [ ] Implement JobService
-- [ ] Implement request validation
-- [ ] Implement idempotency handling
-- [ ] Implement fingerprint fallback
+- [x] Implement JobController
+- [x] Implement JobService
+- [x] Implement request validation
+- [x] Implement idempotency handling
+- [x] Implement fingerprint fallback
 
 Tests:
 
-- [ ] API integration test for job creation
-- [ ] Duplicate request returns same jobId
+- [x] API integration test for job creation
+- [x] Duplicate request returns same jobId
 
 Completion criteria:
 
@@ -113,16 +113,16 @@ Mock Worker endpoints:
 
 Tasks:
 
-- [ ] Implement MockWorkerClient
-- [ ] Implement start processing request
-- [ ] Implement job status polling
-- [ ] Implement timeout configuration
-- [ ] Implement response mapping
+- [x] Implement MockWorkerClient
+- [x] Implement start processing request
+- [x] Implement job status polling
+- [x] Implement timeout configuration
+- [x] Implement response mapping
 
 Tests:
 
-- [ ] Mock worker success scenario
-- [ ] Mock worker failure scenario
+- [x] Mock worker success scenario
+- [x] Mock worker failure scenario
 
 Completion criteria:
 
@@ -144,13 +144,13 @@ Worker responsibilities:
 
 Tasks:
 
-- [ ] Implement WorkerScheduler
-- [ ] Implement job claim logic using `db/claim.sql`
-- [ ] Implement lease mechanism
-- [ ] Implement external jobId storage
-- [ ] Implement polling loop
-- [ ] Implement status mapping
-- [ ] Implement lease extension
+- [x] Implement WorkerScheduler
+- [x] Implement job claim logic using `db/claim.sql`
+- [x] Implement lease mechanism
+- [x] Implement external jobId storage
+- [x] Implement polling loop
+- [x] Implement status mapping
+- [x] Implement lease extension
 
 Completion criteria:
 
@@ -165,16 +165,16 @@ Goal: Implement retry and failure mapping.
 
 Tasks:
 
-- [ ] Implement retry policy
-- [ ] Handle HTTP 429
-- [ ] Handle timeouts
-- [ ] Handle HTTP 5xx
-- [ ] Stop retry after max attempts
+- [x] Implement retry policy
+- [x] Handle HTTP 429
+- [x] Handle timeouts
+- [x] Handle HTTP 5xx
+- [x] Stop retry after max attempts
 
 Tests:
 
-- [ ] retry test
-- [ ] max attempts failure test
+- [x] retry test
+- [x] max attempts failure test
 
 Completion criteria:
 
@@ -189,10 +189,10 @@ Goal: Ensure job consistency after server restart.
 
 Tasks:
 
-- [ ] Detect stale RUNNING jobs
-- [ ] Requeue expired leases
-- [ ] Poll external job status if external_job_id exists
-- [ ] Ensure final states remain immutable
+- [x] Detect stale RUNNING jobs
+- [x] Requeue expired leases
+- [x] Poll external job status if external_job_id exists
+- [x] Ensure final states remain immutable
 
 Completion criteria:
 
@@ -207,9 +207,9 @@ Goal: Prevent duplicate jobs under concurrent requests.
 
 Tasks:
 
-- [ ] Implement ON CONFLICT logic
-- [ ] Implement concurrency test
-- [ ] Simulate multiple POST /jobs requests
+- [x] Implement ON CONFLICT logic
+- [x] Implement concurrency test
+- [x] Simulate multiple POST /jobs requests
 
 Completion criteria:
 
@@ -223,10 +223,10 @@ Goal: Ensure evaluator can run system locally.
 
 Tasks:
 
-- [ ] Create Dockerfile
-- [ ] Implement docker-compose
-- [ ] Configure Postgres container
-- [ ] Configure application container
+- [x] Create Dockerfile
+- [x] Implement docker-compose
+- [x] Configure Postgres container
+- [x] Configure application container
 - [x] Add run instructions to README
 
 Completion criteria:
@@ -244,17 +244,17 @@ Tests required:
 
 Unit Tests
 
-- [ ] state transition validation
-- [ ] idempotency logic
+- [x] state transition validation
+- [x] idempotency logic
 
 Integration Tests
 
-- [ ] worker success
-- [ ] worker failure
+- [x] worker success
+- [x] worker failure
 
 Concurrency Tests
 
-- [ ] duplicate request race test
+- [x] duplicate request race test
 
 Completion criteria:
 ```bash
@@ -288,17 +288,19 @@ README includes all assignment design explanations.
 
 Update this section when work progresses.
 
-Last updated: 2026-03-04 15:16 UTC
+Last updated: 2026-03-04 15:47 UTC
 
-Current Phase: Phase 10 (Documentation)
+Current Phase: Phase 9 (Testing) - Completed
 
 Completed:
 - Documentation consistency fixes (API contract, retry configurability, stale requeue batching, package naming consistency)
 - README baseline for assignment evaluation
 - Commit message convention documented (`{type}: {message}`, no branch-name prefix)
+- Phase 0, 1, 2, 3, 4, 5, 6, 8, 9 주요 구현 및 테스트 반영
+- Phase 7 ON CONFLICT 기반 중복 삽입 처리 반영
 
 In Progress:
-- Implementation phases (Phase 0-9)
+- None
 
 ---
 
