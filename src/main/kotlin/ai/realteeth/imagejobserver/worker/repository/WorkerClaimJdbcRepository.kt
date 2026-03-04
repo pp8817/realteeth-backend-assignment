@@ -32,6 +32,16 @@ class WorkerClaimJdbcRepository(
         }
     }
 
+    override fun findStaleRunningJobsAtOrOverMaxAttempts(batchSize: Int, maxAttempts: Int): List<UUID> {
+        val params = MapSqlParameterSource()
+            .addValue("batch_size", batchSize)
+            .addValue("max_attempts", maxAttempts)
+
+        return jdbcTemplate.query(claimSqlProvider.selectStaleExhaustedSql, params) { rs, _ ->
+            rs.getObject("id", UUID::class.java)
+        }
+    }
+
     override fun extendLease(jobId: UUID, workerId: String, leaseSeconds: Int): Boolean {
         val params = MapSqlParameterSource()
             .addValue("job_id", jobId)

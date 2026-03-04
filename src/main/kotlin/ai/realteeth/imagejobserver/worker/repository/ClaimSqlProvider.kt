@@ -14,6 +14,8 @@ class ClaimSqlProvider {
 
     private lateinit var _extendLeaseSql: String
 
+    private lateinit var _selectStaleExhaustedSql: String
+
     val claimQueuedSql: String
         get() = _claimQueuedSql
 
@@ -22,6 +24,9 @@ class ClaimSqlProvider {
 
     val extendLeaseSql: String
         get() = _extendLeaseSql
+
+    val selectStaleExhaustedSql: String
+        get() = _selectStaleExhaustedSql
 
     @PostConstruct
     fun init() {
@@ -35,11 +40,12 @@ class ClaimSqlProvider {
             .filter { it.isNotBlank() }
             .map { "$it;" }
 
-        require(statements.size >= 3) { "db/claim.sql must contain at least 3 SQL statements" }
+        require(statements.size >= 4) { "db/claim.sql must contain at least 4 SQL statements" }
 
         _claimQueuedSql = statements[0]
         _requeueStaleSql = statements[1]
         _extendLeaseSql = statements[2]
+        _selectStaleExhaustedSql = statements[3]
     }
 
     private fun loadScript(): String {

@@ -9,6 +9,8 @@ interface WorkerClaimRepository {
 
     fun requeueStaleRunningJobs(batchSize: Int, maxAttempts: Int): List<UUID>
 
+    fun findStaleRunningJobsAtOrOverMaxAttempts(batchSize: Int, maxAttempts: Int): List<UUID>
+
     fun extendLease(jobId: UUID, workerId: String, leaseSeconds: Int): Boolean
 
     fun now(): Instant = Instant.now()
