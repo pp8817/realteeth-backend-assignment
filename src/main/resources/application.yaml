@@ -1,3 +1,36 @@
 spring:
   application:
     name: image-job-server
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/image_jobs}
+    username: ${SPRING_DATASOURCE_USERNAME:image_jobs}
+    password: ${SPRING_DATASOURCE_PASSWORD:image_jobs}
+  jpa:
+    hibernate:
+      ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:none}
+    open-in-view: false
+    properties:
+      hibernate:
+        dialect: ${SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT:org.hibernate.dialect.PostgreSQLDialect}
+  sql:
+    init:
+      mode: always
+      schema-locations: optional:classpath:db/schema.sql,optional:file:db/schema.sql
+
+app:
+  worker:
+    enabled: ${APP_WORKER_ENABLED:true}
+    id: ${APP_WORKER_ID:worker-1}
+    lease-seconds: ${APP_WORKER_LEASE_SECONDS:30}
+    batch-size: ${APP_WORKER_BATCH_SIZE:5}
+    max-attempts: ${APP_WORKER_MAX_ATTEMPTS:3}
+    poll-interval-ms: ${APP_WORKER_POLL_INTERVAL_MS:1000}
+    threads: ${APP_WORKER_THREADS:4}
+  mock:
+    base-url: ${APP_MOCK_BASE_URL:https://dev.realteeth.ai/mock}
+    api-key: ${APP_MOCK_API_KEY:}
+    timeout-ms: ${APP_MOCK_TIMEOUT_MS:5000}
+
+logging:
+  level:
+    root: INFO
