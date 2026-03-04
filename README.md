@@ -150,3 +150,16 @@ curl -X POST "https://dev.realteeth.ai/mock/auth/issue-key" \
   -H "Content-Type: application/json" \
   -d '{"candidateName":"YOUR_NAME","email":"YOUR_EMAIL"}'
 ```
+
+## 9. 검증 방법 및 결과 요약
+
+자동 테스트:
+- `./gradlew test` 통과
+- HTTP 레벨 동시성 검증: `DuplicateRequestHttpRaceIntegrationTest`
+- Postgres(Testcontainers) claim/lease E2E 검증: `WorkerClaimLeasePostgresIntegrationTest`
+
+컨테이너 스모크:
+- `cd docker && docker compose up --build -d`
+- `GET /jobs` 응답 200 확인
+- `POST /jobs` 생성 후 `GET /jobs/{jobId}` 조회 200 확인
+- `cd docker && docker compose down -v`

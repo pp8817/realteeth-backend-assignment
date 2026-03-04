@@ -251,10 +251,12 @@ Integration Tests
 
 - [x] worker success
 - [x] worker failure
+- [x] Postgres(Testcontainers) 기반 claim/lease E2E
 
 Concurrency Tests
 
 - [x] duplicate request race test
+- [x] multi-thread HTTP POST `/jobs` race test
 
 Completion criteria:
 ```bash
@@ -288,16 +290,19 @@ README includes all assignment design explanations.
 
 Update this section when work progresses.
 
-Last updated: 2026-03-04 15:47 UTC
+Last updated: 2026-03-04 16:11 UTC
 
-Current Phase: Phase 9 (Testing) - Completed
+Current Phase: Phase 10 (Documentation) - Completed
 
 Completed:
 - Documentation consistency fixes (API contract, retry configurability, stale requeue batching, package naming consistency)
 - README baseline for assignment evaluation
 - Commit message convention documented (`{type}: {message}`, no branch-name prefix)
-- Phase 0, 1, 2, 3, 4, 5, 6, 8, 9 주요 구현 및 테스트 반영
+- Phase 0, 1, 2, 3, 4, 5, 6, 8, 9, 10 주요 구현 및 테스트 반영
 - Phase 7 ON CONFLICT 기반 중복 삽입 처리 반영
+- HTTP 엔드포인트 레벨 동시성 레이스 검증 추가 및 통과
+- Postgres(Testcontainers) 환경에서 worker claim/lease 경로 E2E 검증 추가 및 통과
+- `docker compose up --build` 실기동 스모크 검증 완료 (GET `/jobs`, POST `/jobs`, GET `/jobs/{jobId}`)
 
 In Progress:
 - None
