@@ -1,10 +1,12 @@
 package ai.realteeth.imagejobserver.worker.service
 
 import ai.realteeth.imagejobserver.job.domain.JobEntity
+import ai.realteeth.imagejobserver.job.domain.JobErrorCode
 import ai.realteeth.imagejobserver.job.domain.JobStatus
 import ai.realteeth.imagejobserver.job.repository.JobJpaRepository
 import ai.realteeth.imagejobserver.job.repository.JobResultJpaRepository
 import ai.realteeth.imagejobserver.support.PostgresContainerSupport
+import ai.realteeth.imagejobserver.worker.config.WorkerProperties
 import ai.realteeth.imagejobserver.worker.repository.WorkerClaimRepository
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
@@ -34,6 +36,12 @@ class WorkerClaimLeasePostgresIntegrationTest : PostgresContainerSupport() {
 
     @Autowired
     private lateinit var workerClaimRepository: WorkerClaimRepository
+
+    @Autowired
+    private lateinit var workerScheduler: WorkerScheduler
+
+    @Autowired
+    private lateinit var workerProperties: WorkerProperties
 
     @Autowired
     private lateinit var jobRepository: JobJpaRepository
@@ -143,6 +151,32 @@ class WorkerClaimLeasePostgresIntegrationTest : PostgresContainerSupport() {
         val after = jobRepository.findById(jobId).orElseThrow().lockedUntil
             ?: throw IllegalStateException("lockedUntil must exist")
         assertTrue(after.isAfter(before))
+    }
+
+    @Test
+    fun `stale RUNNING job이 max attempts 이상이면 TIMEOUT FAILED로 종결된다`() {
+        val originalEnabled = workerProperties.enabled
+        workerProperties.enabled = true
+
+        try {
+            val staleExhausted = insertRunningJob(
+                attemptCount = 3,
+                lockedUntil = Instant.now().minusSeconds(30),
+            )
+
+            workerScheduler.pollAndDispatch()
+
+            val updated = jobRepository.findById(staleExhausted).orElseThrow()
+            assertEquals(JobStatus.FAILED, updated.status)
+            assertNull(updated.lockedBy)
+            assertNull(updated.lockedUntil)
+
+            val result = jobResultRepository.findByJobId(staleExhausted)
+            assertEquals(JobErrorCode.TIMEOUT, result?.errorCode)
+            assertTrue(result?.errorMessage?.contains("max attempts") == true)
+        } finally {
+            workerProperties.enabled = originalEnabled
+        }
     }
 
     private fun insertQueuedJob(): UUID {

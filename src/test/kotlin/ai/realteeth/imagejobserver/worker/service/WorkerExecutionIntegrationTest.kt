@@ -5,10 +5,12 @@ import ai.realteeth.imagejobserver.job.domain.JobErrorCode
 import ai.realteeth.imagejobserver.job.domain.JobStatus
 import ai.realteeth.imagejobserver.job.repository.JobJpaRepository
 import ai.realteeth.imagejobserver.job.repository.JobResultJpaRepository
+import ai.realteeth.imagejobserver.worker.config.WorkerProperties
 import ai.realteeth.imagejobserver.worker.repository.WorkerClaimRepository
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -35,6 +37,9 @@ class WorkerExecutionIntegrationTest {
 
     @Autowired
     private lateinit var jobResultRepository: JobResultJpaRepository
+
+    @Autowired
+    private lateinit var workerProperties: WorkerProperties
 
     @MockBean
     private lateinit var workerClaimRepository: WorkerClaimRepository
@@ -156,6 +161,87 @@ class WorkerExecutionIntegrationTest {
         assertEquals(JobErrorCode.INTERNAL, result?.errorCode)
     }
 
+    @Test
+    fun `lease 연장 실패 시 작업을 포기하고 stale 복구로 넘긴다`() {
+        whenever(workerClaimRepository.extendLease(any(), any(), any())).thenReturn(false)
+
+        mockWebServer.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .addHeader("Content-Type", "application/json")
+                .setBody("{\"jobId\":\"ext-lease-lost\",\"status\":\"PROCESSING\"}"),
+        )
+
+        val jobId = insertRunningJob()
+
+        workerExecutionService.execute(jobId)
+
+        val updated = jobRepository.findById(jobId).orElseThrow()
+        assertEquals(JobStatus.RUNNING, updated.status)
+        assertEquals("ext-lease-lost", updated.externalJobId)
+        assertNull(jobResultRepository.findByJobId(jobId))
+    }
+
+    @Test
+    fun `lease 연장 예외 시 작업을 포기하고 stale 복구로 넘긴다`() {
+        whenever(workerClaimRepository.extendLease(any(), any(), any()))
+            .thenThrow(RuntimeException("db unavailable"))
+
+        mockWebServer.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .addHeader("Content-Type", "application/json")
+                .setBody("{\"jobId\":\"ext-lease-exception\",\"status\":\"PROCESSING\"}"),
+        )
+
+        val jobId = insertRunningJob()
+
+        workerExecutionService.execute(jobId)
+
+        val updated = jobRepository.findById(jobId).orElseThrow()
+        assertEquals(JobStatus.RUNNING, updated.status)
+        assertEquals("ext-lease-exception", updated.externalJobId)
+        assertNull(jobResultRepository.findByJobId(jobId))
+    }
+
+    @Test
+    fun `최대 실행 시간을 초과하면 작업을 포기하고 stale 복구로 넘긴다`() {
+        val originalMaxProcessingSeconds = workerProperties.maxProcessingSeconds
+        val originalStatusPollIntervalMs = workerProperties.statusPollIntervalMs
+
+        workerProperties.maxProcessingSeconds = 1
+        workerProperties.statusPollIntervalMs = 50
+
+        try {
+            mockWebServer.enqueue(
+                MockResponse()
+                    .setResponseCode(200)
+                    .addHeader("Content-Type", "application/json")
+                    .setBody("{\"jobId\":\"ext-timeout-loop\",\"status\":\"PROCESSING\"}"),
+            )
+            repeat(200) {
+                mockWebServer.enqueue(
+                    MockResponse()
+                        .setResponseCode(200)
+                        .addHeader("Content-Type", "application/json")
+                        .setBody("{\"jobId\":\"ext-timeout-loop\",\"status\":\"PROCESSING\",\"result\":null}"),
+                )
+            }
+
+            val jobId = insertRunningJob()
+
+            workerExecutionService.execute(jobId)
+
+            val updated = jobRepository.findById(jobId).orElseThrow()
+            assertEquals(JobStatus.RUNNING, updated.status)
+            assertEquals("ext-timeout-loop", updated.externalJobId)
+            assertNull(jobResultRepository.findByJobId(jobId))
+        } finally {
+            workerProperties.maxProcessingSeconds = originalMaxProcessingSeconds
+            workerProperties.statusPollIntervalMs = originalStatusPollIntervalMs
+        }
+    }
+
     private fun insertRunningJob(): UUID {
         val entity = JobEntity(
             id = UUID.randomUUID(),
@@ -176,8 +262,11 @@ class WorkerExecutionIntegrationTest {
         fun registerMock(registry: DynamicPropertyRegistry) {
             registry.add("app.mock.base-url") { mockWebServer.url("/mock").toString().removeSuffix("/") }
             registry.add("app.mock.api-key") { "test-api-key" }
+            registry.add("app.mock.auto-issue-enabled") { false }
             registry.add("app.worker.enabled") { false }
             registry.add("app.worker.id") { "worker-1" }
+            registry.add("app.worker.max-processing-seconds") { 300 }
+            registry.add("app.worker.status-poll-interval-ms") { 100 }
         }
     }
 }
