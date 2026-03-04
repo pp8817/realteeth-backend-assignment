@@ -66,6 +66,7 @@ Stale recovery:
 - Worker re-queues them:
     - status=QUEUED
     - attempt_count += 1
+    - only while attempt_count < max_attempts (configured by `APP_WORKER_MAX_ATTEMPTS`)
     - clear lease fields or reset lease
 
 ## 7. Restart Behavior

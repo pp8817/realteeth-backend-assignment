@@ -41,7 +41,7 @@ src/main/kotlin/ai/realteeth/imagejobserver
 ```
 ├ job
 ├ worker
-├ client
+├ client.mockworker
 └ global
 ```
 - [ ] Commit initial project structure
@@ -227,7 +227,7 @@ Tasks:
 - [ ] Implement docker-compose
 - [ ] Configure Postgres container
 - [ ] Configure application container
-- [ ] Add run instructions to README
+- [x] Add run instructions to README
 
 Completion criteria:
 
@@ -270,13 +270,13 @@ Goal: Provide complete README for evaluation.
 
 Tasks:
 
-- [ ] Explain architecture
-- [ ] Explain state model
-- [ ] Explain idempotency strategy
-- [ ] Explain retry strategy
-- [ ] Explain restart recovery
-- [ ] Explain bottlenecks
-- [ ] Provide run instructions
+- [x] Explain architecture
+- [x] Explain state model
+- [x] Explain idempotency strategy
+- [x] Explain retry strategy
+- [x] Explain restart recovery
+- [x] Explain bottlenecks
+- [x] Provide run instructions
 
 Completion criteria:
 
@@ -288,19 +288,16 @@ README includes all assignment design explanations.
 
 Update this section when work progresses.
 
-Example:
-```
-Last updated: YYYY-MM-DD HH:MM UTC
+Last updated: 2026-03-04 14:56 UTC
 
-Current Phase: Phase X
+Current Phase: Phase 10 (Documentation)
 
 Completed:
-•	Phase 0
-•	Phase 1
+- Documentation consistency fixes (API contract, retry configurability, stale requeue batching, package naming consistency)
+- README baseline for assignment evaluation
 
 In Progress:
-•	Phase 2
-```
+- Implementation phases (Phase 0-9)
 
 ---
 

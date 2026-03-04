@@ -108,6 +108,77 @@ Must include:
 
 ---
 
+## Phase 10 — Documentation
+Goal: Produce README required for the assignment evaluation.
+
+Tasks:
+- Write README.md explaining the architecture and design decisions.
+- README.md must be written in Korean.
+- Include the following sections required by the assignment:
+
+### 1. State Model Design
+Explain why the internal state model is:
+RECEIVED -> QUEUED -> RUNNING -> SUCCEEDED/FAILED
+
+Explain:
+- asynchronous processing
+- separation of client request and external worker execution
+- immutable final states
+
+### 2. Failure Handling Strategy
+Explain retry strategy and error classification:
+
+Retryable:
+- network error
+- timeout
+- 5xx
+- 429
+
+Non-retryable:
+- 400
+- 401
+- validation errors
+
+Explain exponential backoff.
+
+### 3. Concurrent Request Handling
+Explain duplicate request strategy:
+- Idempotency-Key
+- fingerprint hashing
+- DB unique constraints
+- ON CONFLICT logic
+
+Explain race condition protection.
+
+### 4. Traffic Bottlenecks
+Explain possible bottlenecks:
+- external worker latency
+- rate limiting (429)
+- database contention
+
+Explain mitigation:
+- worker concurrency limits
+- SKIP LOCKED
+- retry with backoff
+
+### 5. External System Integration
+Explain Mock Worker integration:
+- POST /mock/process
+- GET /mock/process/{jobId}
+- polling model
+- external <-> internal state mapping
+
+### 6. Running the System
+Explain:
+`docker compose up`
+
+Explain ports and environment variables.
+
+Completion criteria:
+README.md must contain all sections required in the assignment description.
+
+---
+
 ## Done Criteria
 - `./gradlew test` passes
 - `docker compose up` runs

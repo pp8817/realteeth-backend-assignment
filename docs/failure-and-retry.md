@@ -8,7 +8,9 @@
 
 Retry Strategy:
 - Exponential backoff (e.g., 0.5s, 1s, 2s)
-- Max attempts per job: 3 (configurable)
+- Max attempts per job: configurable (default 3)
+- Environment variable: `APP_WORKER_MAX_ATTEMPTS`
+- Worker claim/requeue SQL uses `:max_attempts` parameter from configuration
 - On each retry, update attempt_count
 - If attempts exceed max, mark FAILED
 

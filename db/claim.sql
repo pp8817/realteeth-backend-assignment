@@ -28,19 +28,28 @@ WHERE j.id = cte.id
 -- B) Requeue stale running jobs (lease expired)
 -- =========================
 -- Params:
--- :now (timestamp) - optional, can use NOW()
 -- :batch_size (int)
-UPDATE job
+-- :max_attempts (int)
+WITH stale AS (
+    SELECT id
+    FROM job
+    WHERE status = 'RUNNING'
+      AND locked_until IS NOT NULL
+      AND locked_until < NOW()
+      AND attempt_count < :max_attempts
+    ORDER BY locked_until ASC
+    LIMIT :batch_size
+    FOR UPDATE SKIP LOCKED
+)
+UPDATE job j
 SET
     status = 'QUEUED',
     locked_by = NULL,
     locked_until = NULL,
-    attempt_count = attempt_count + 1
-WHERE status = 'RUNNING'
-  AND locked_until IS NOT NULL
-  AND locked_until < NOW()
-  AND attempt_count < 3
-    RETURNING *;
+    attempt_count = j.attempt_count + 1
+FROM stale
+WHERE j.id = stale.id
+    RETURNING j.*;
 
 -- =========================
 -- C) Extend lease for a running job (heartbeat)
