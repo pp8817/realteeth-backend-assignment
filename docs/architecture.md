@@ -60,6 +60,9 @@ We use DB-based queue with SKIP LOCKED:
     - locked_by=workerId
     - locked_until=now + leaseDuration
 - Worker periodically extends lease while processing.
+- Worker polls Mock Worker in a loop while status is PROCESSING.
+- If lease heartbeat fails (DB error or lease lost), worker safely abandons current execution and lets stale recovery re-claim the job.
+- If processing exceeds `APP_WORKER_MAX_PROCESSING_SECONDS` (default 1800), worker also abandons and defers to stale recovery.
 
 Stale recovery:
 - RUNNING jobs with locked_until < now are considered stale.
@@ -68,6 +71,7 @@ Stale recovery:
     - attempt_count += 1
     - only while attempt_count < max_attempts (configured by `APP_WORKER_MAX_ATTEMPTS`)
     - clear lease fields or reset lease
+- Stale RUNNING jobs with `attempt_count >= max_attempts` are finalized as `FAILED(TIMEOUT)` (no more requeue).
 
 ## 7. Restart Behavior
 On server restart:
@@ -75,6 +79,7 @@ On server restart:
 - worker resumes polling
 - if external_job_id exists, worker polls GET /mock/process/{external_job_id} to resync
 - stale RUNNING jobs get re-queued and retried
+- stale RUNNING jobs at/over max attempts are completed as FAILED(TIMEOUT)
 
 Data integrity risk points:
 - crash after POST /mock/process but before saving external_job_id
@@ -97,9 +102,16 @@ Bottlenecks:
 - external latency (seconds to tens of seconds)
 - rate limiting (429)
 - DB contention on claim queries
+- potentially unbounded PROCESSING duration
 
 Mitigations:
 - worker concurrency limit (thread pool / bulkhead)
 - exponential backoff retries
 - FOR UPDATE SKIP LOCKED for claim
 - paging LIMIT for claim batch sizes
+- max processing timeout + stale recovery handoff
+
+## 10. Mock API Key Strategy
+- If `APP_MOCK_API_KEY` is configured, worker uses it directly.
+- If not configured and `APP_MOCK_AUTO_ISSUE_ENABLED=true`, worker lazily calls `POST /mock/auth/issue-key` on first need.
+- Issued key is cached in memory and reused for subsequent `/mock/process` calls.

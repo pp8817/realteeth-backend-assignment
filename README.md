@@ -45,6 +45,8 @@
 - 지수 백오프(예: `0.5s -> 1s -> 2s`)
 - 최대 시도 횟수 초과 시 `FAILED`로 종료
 - 최대 시도 횟수는 환경변수 `APP_WORKER_MAX_ATTEMPTS`로 설정(기본 3)
+- heartbeat(`extendLease`) 실패 시 현재 실행을 즉시 중단하고 lock 만료 후 stale 복구 경로로 이관
+- `APP_WORKER_MAX_PROCESSING_SECONDS`(기본 1800초) 초과 시 무한 `PROCESSING` 보호를 위해 현재 실행을 중단하고 stale 복구 경로로 이관
 
 ## 3. 동시 요청 처리 전략
 
@@ -71,6 +73,8 @@
 - `FOR UPDATE SKIP LOCKED` 기반 claim
 - 재시도 + 백오프
 - claim/requeue 배치 크기 제한(`batch_size`)
+- 상태 폴링 간격 분리(`APP_WORKER_STATUS_POLL_INTERVAL_MS`)로 외부 조회 부하 제어
+- stale + `attempt_count >= max_attempts` 작업은 `FAILED(TIMEOUT)`으로 종결하여 무한 재큐잉 방지
 
 ## 5. 외부 시스템 연동 방식
 
@@ -86,6 +90,7 @@ Mock Worker:
   - `PROCESSING -> RUNNING`
   - `COMPLETED -> SUCCEEDED`
   - `FAILED -> FAILED`
+- `APP_MOCK_API_KEY` 미설정 시 `APP_MOCK_AUTO_ISSUE_ENABLED=true`이면 `/mock/auth/issue-key`를 지연 호출해 API Key를 자동 발급/캐시
 
 ## 6. 처리 보장 모델
 
@@ -107,6 +112,7 @@ Mock Worker:
 - 트랜잭션 기반 상태/결과 저장
 - lease 만료 복구
 - final state 불변 규칙
+- stale + max attempts 초과 시 `FAILED(TIMEOUT)` 종결로 정체 작업 정리
 
 ## 8. 실행 방법
 
@@ -140,8 +146,13 @@ docker compose down
 - `APP_WORKER_LEASE_SECONDS=30`
 - `APP_WORKER_BATCH_SIZE=5`
 - `APP_WORKER_MAX_ATTEMPTS=3`
+- `APP_WORKER_STATUS_POLL_INTERVAL_MS=2000`
+- `APP_WORKER_MAX_PROCESSING_SECONDS=1800`
 - `APP_MOCK_BASE_URL=https://dev.realteeth.ai/mock`
-- `APP_MOCK_API_KEY=` (필요 시 설정)
+- `APP_MOCK_API_KEY=` (비우면 자동 발급 사용 가능)
+- `APP_MOCK_AUTO_ISSUE_ENABLED=true`
+- `APP_MOCK_CANDIDATE_NAME=박상민`
+- `APP_MOCK_CANDIDATE_EMAIL=pp8817@naver.com`
 
 API Key 발급 예시(Mock Worker):
 
@@ -157,6 +168,8 @@ curl -X POST "https://dev.realteeth.ai/mock/auth/issue-key" \
 - `./gradlew test` 통과
 - HTTP 레벨 동시성 검증: `DuplicateRequestHttpRaceIntegrationTest`
 - Postgres(Testcontainers) claim/lease E2E 검증: `WorkerClaimLeasePostgresIntegrationTest`
+- heartbeat 안전 포기/최대 실행 시간 검증: `WorkerExecutionIntegrationTest`
+- API Key 자동 발급/재사용 검증: `MockWorkerAutoIssueKeyIntegrationTest`
 
 컨테이너 스모크:
 - `cd docker && docker compose up --build -d`

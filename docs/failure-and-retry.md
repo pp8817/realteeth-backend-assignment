@@ -13,6 +13,9 @@ Retry Strategy:
 - Worker claim/requeue SQL uses `:max_attempts` parameter from configuration
 - On each retry, update attempt_count
 - If attempts exceed max, mark FAILED
+- During retry waits, worker extends lease heartbeat; if heartbeat fails, worker abandons current execution safely and lets stale recovery re-claim the job.
+- Status polling interval is configurable via `APP_WORKER_STATUS_POLL_INTERVAL_MS`.
+- Max processing duration is bounded by `APP_WORKER_MAX_PROCESSING_SECONDS` (default 1800). On timeout, worker abandons execution and stale recovery takes over.
 
 ## Non-retryable Errors (fail fast)
 - HTTP 401 Unauthorized (bad API key)
@@ -31,3 +34,4 @@ Retry Strategy:
 - Once a job enters final state, never transition out.
 - result is saved only when transitioning to SUCCEEDED
 - error is saved only when transitioning to FAILED
+- Stale RUNNING jobs with `attempt_count >= max_attempts` are finalized as `FAILED` with `errorCode=TIMEOUT`.

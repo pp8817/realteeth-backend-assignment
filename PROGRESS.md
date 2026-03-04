@@ -290,7 +290,7 @@ README includes all assignment design explanations.
 
 Update this section when work progresses.
 
-Last updated: 2026-03-04 16:11 UTC
+Last updated: 2026-03-05 02:00 KST
 
 Current Phase: Phase 10 (Documentation) - Completed
 
@@ -303,6 +303,13 @@ Completed:
 - HTTP 엔드포인트 레벨 동시성 레이스 검증 추가 및 통과
 - Postgres(Testcontainers) 환경에서 worker claim/lease 경로 E2E 검증 추가 및 통과
 - `docker compose up --build` 실기동 스모크 검증 완료 (GET `/jobs`, POST `/jobs`, GET `/jobs/{jobId}`)
+- worker heartbeat 실행 루프 도입(`PROCESSING` 연속 폴링 + lease 연장)
+- heartbeat 실패 시 안전 포기 후 stale 재클레임 허용 정책 반영
+- `APP_WORKER_MAX_PROCESSING_SECONDS` 기반 최대 실행 시간 정책 반영
+- stale + `attempt_count >= max_attempts` 작업 `FAILED(TIMEOUT)` 종결 경로 반영
+- `APP_MOCK_API_KEY` 미설정 시 `/mock/auth/issue-key` 자동 발급(지연 호출) 및 캐시 재사용 반영
+- heartbeat/timeout/stale exhausted/auto issue-key 테스트 추가 및 통과
+- heartbeat 보완 반영 이후 `docker compose up --build` 스모크 재검증 통과 (GET `/jobs`, POST `/jobs`, GET `/jobs/{jobId}`)
 
 In Progress:
 - None
