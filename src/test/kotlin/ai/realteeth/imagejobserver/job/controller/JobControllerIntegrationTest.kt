@@ -1,5 +1,7 @@
 package ai.realteeth.imagejobserver.job.controller
 
+import ai.realteeth.imagejobserver.job.domain.JobEntity
+import ai.realteeth.imagejobserver.job.domain.JobStatus
 import ai.realteeth.imagejobserver.job.repository.JobJpaRepository
 import ai.realteeth.imagejobserver.job.repository.JobResultJpaRepository
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -12,8 +14,10 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.http.MediaType
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
+import java.util.UUID
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -70,5 +74,20 @@ class JobControllerIntegrationTest {
         assertEquals(firstJson.path("jobId").asText(), secondJson.path("jobId").asText())
         assertEquals(false, firstJson.path("deduped").asBoolean())
         assertEquals(true, secondJson.path("deduped").asBoolean())
+    }
+
+    @Test
+    fun `SUCCEEDED 인데 결과 row가 없으면 result 조회는 500을 반환한다`() {
+        val jobId = jobRepository.saveAndFlush(
+            JobEntity(
+                id = UUID.randomUUID(),
+                status = JobStatus.SUCCEEDED,
+                imageUrl = "https://example.com/succeeded-no-result.png",
+                fingerprint = UUID.randomUUID().toString().replace("-", ""),
+            ),
+        ).id
+
+        mockMvc.perform(get("/jobs/{jobId}/result", jobId))
+            .andExpect(status().isInternalServerError)
     }
 }

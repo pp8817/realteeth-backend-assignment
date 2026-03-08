@@ -32,6 +32,12 @@ class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ErrorResponse(ex.message ?: "Validation failed"))
     }
 
+    @ExceptionHandler(DataIntegrityException::class)
+    fun handleDataIntegrity(ex: DataIntegrityException): ResponseEntity<ErrorResponse> {
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+            .body(ErrorResponse(ex.message ?: "Data integrity violation"))
+    }
+
     @ExceptionHandler(Exception::class)
     fun handleGeneric(ex: Exception): ResponseEntity<ErrorResponse> {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ErrorResponse(ex.message ?: "Internal error"))

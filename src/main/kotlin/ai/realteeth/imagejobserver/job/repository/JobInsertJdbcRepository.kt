@@ -14,6 +14,13 @@ class JobInsertJdbcRepository(
     private val dataSource: DataSource,
 ) : JobInsertRepository {
 
+    private val supportsOnConflict: Boolean by lazy {
+        dataSource.connection.use { connection ->
+            val product = connection.metaData.databaseProductName
+            !product.contains("H2", ignoreCase = true)
+        }
+    }
+
     override fun insertOrGet(
         jobId: UUID,
         imageUrl: String,
@@ -26,17 +33,10 @@ class JobInsertJdbcRepository(
             .addValue("idempotency_key", idempotencyKey)
             .addValue("fingerprint", fingerprint)
 
-        return if (supportsOnConflict()) {
+        return if (supportsOnConflict) {
             insertOrGetWithOnConflict(params)
         } else {
             insertOrGetWithFallback(params)
-        }
-    }
-
-    private fun supportsOnConflict(): Boolean {
-        dataSource.connection.use { connection ->
-            val product = connection.metaData.databaseProductName
-            return !product.contains("H2", ignoreCase = true)
         }
     }
 

@@ -1,5 +1,6 @@
 package ai.realteeth.imagejobserver.job.service
 
+import ai.realteeth.imagejobserver.global.exception.DataIntegrityException
 import ai.realteeth.imagejobserver.global.exception.ResourceNotFoundException
 import ai.realteeth.imagejobserver.global.util.HashUtils
 import ai.realteeth.imagejobserver.global.util.ProgressMapper
@@ -81,7 +82,7 @@ class JobService(
             JobStatus.SUCCEEDED -> {
                 val result = jobResultRepository.findByJobId(job.id)
                     ?.resultPayload
-                    ?: ""
+                    ?: throw DataIntegrityException("Job result missing for succeeded job: $jobId")
                 JobResultView.Success(SuccessResultResponse(result))
             }
 
