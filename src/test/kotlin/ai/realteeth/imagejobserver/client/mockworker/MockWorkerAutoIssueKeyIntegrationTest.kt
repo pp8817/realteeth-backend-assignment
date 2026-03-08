@@ -7,6 +7,7 @@ import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
@@ -21,6 +22,14 @@ class MockWorkerAutoIssueKeyIntegrationTest {
 
     @Autowired
     private lateinit var mockWorkerClient: MockWorkerClient
+
+    @Autowired
+    private lateinit var mockApiKeyProvider: MockApiKeyProvider
+
+    @BeforeEach
+    fun setUp() {
+        mockApiKeyProvider.invalidateCachedApiKey()
+    }
 
     @Test
     fun `api key 미설정 시 자동 발급 후 process 호출에 키를 재사용한다`() {
