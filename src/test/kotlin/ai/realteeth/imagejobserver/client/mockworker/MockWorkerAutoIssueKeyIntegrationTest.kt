@@ -26,9 +26,14 @@ class MockWorkerAutoIssueKeyIntegrationTest {
     @Autowired
     private lateinit var mockApiKeyProvider: MockApiKeyProvider
 
+    @Autowired
+    private lateinit var mockWorkerProperties: MockWorkerProperties
+
     @BeforeEach
     fun setUp() {
         mockApiKeyProvider.invalidateCachedApiKey()
+        mockWorkerProperties.apiKey = ""
+        mockWorkerProperties.autoIssueEnabled = true
     }
 
     @Test
@@ -74,6 +79,30 @@ class MockWorkerAutoIssueKeyIntegrationTest {
         assertEquals("/mock/process", processRequest2?.path)
         assertEquals("mock_auto_issued", processRequest2?.getHeader("X-API-KEY"))
 
+        assertNull(noMore)
+    }
+
+    @Test
+    fun `설정된 api key가 있으면 issue-key를 호출하지 않는다`() {
+        mockWorkerProperties.apiKey = "mock_configured_key"
+        mockWorkerProperties.autoIssueEnabled = false
+
+        mockWebServer.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .addHeader("Content-Type", "application/json")
+                .setBody("{\"jobId\":\"ext-configured\",\"status\":\"PROCESSING\"}"),
+        )
+
+        val response = mockWorkerClient.startProcess("https://example.com/configured.png")
+
+        assertEquals(MockWorkerJobStatus.PROCESSING, response.status)
+
+        val processRequest = mockWebServer.takeRequest(1, TimeUnit.SECONDS)
+        val noMore = mockWebServer.takeRequest(300, TimeUnit.MILLISECONDS)
+
+        assertEquals("/mock/process", processRequest?.path)
+        assertEquals("mock_configured_key", processRequest?.getHeader("X-API-KEY"))
         assertNull(noMore)
     }
 
