@@ -70,9 +70,8 @@ class JobService(
         return when (job.status) {
             JobStatus.SUCCEEDED -> {
                 val result = jobResultRepository.findByJobId(job.id)
-                    ?.resultPayload
                     ?: throw DataIntegrityException("Job result missing for succeeded job: $jobId")
-                JobResultView.Success(SuccessJobResultView(result))
+                JobResultView.Success(SuccessJobResultView(result.resultPayload))
             }
 
             JobStatus.FAILED -> {
@@ -158,7 +157,7 @@ class JobService(
     }
 
     @Transactional
-    fun completeSucceeded(jobId: UUID, payload: String) {
+    fun completeSucceeded(jobId: UUID, payload: String?) {
         val job = getJobForUpdate(jobId)
         if (job.status.isFinal()) {
             return

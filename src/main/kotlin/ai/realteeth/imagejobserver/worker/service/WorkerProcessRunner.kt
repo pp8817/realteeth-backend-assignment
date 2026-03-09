@@ -74,14 +74,6 @@ class WorkerProcessRunner(
             }
 
             MockWorkerJobStatus.COMPLETED -> {
-                if (result == null) {
-                    jobService.completeFailed(
-                        jobId = jobId,
-                        errorCode = JobErrorCode.INTERNAL,
-                        message = COMPLETED_WITHOUT_RESULT_MESSAGE,
-                    )
-                    return
-                }
                 jobService.completeSucceeded(jobId, result)
             }
 
@@ -98,9 +90,5 @@ class WorkerProcessRunner(
     private fun isProcessingTimedOut(job: JobEntity): Boolean {
         val startedAt = job.processingStartedAt ?: job.updatedAt ?: job.createdAt ?: return false
         return Duration.between(startedAt, Instant.now()).seconds >= workerProperties.maxProcessingSeconds.toLong()
-    }
-
-    companion object {
-        const val COMPLETED_WITHOUT_RESULT_MESSAGE = "Mock Worker returned COMPLETED without result"
     }
 }

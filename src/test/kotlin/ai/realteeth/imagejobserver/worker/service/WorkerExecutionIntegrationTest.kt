@@ -125,7 +125,7 @@ class WorkerExecutionIntegrationTest {
     }
 
     @Test
-    fun `mock worker가 COMPLETED지만 result가 null이면 job은 INTERNAL FAILED가 된다`() {
+    fun `mock worker가 COMPLETED지만 result가 null이면 job은 SUCCEEDED가 된다`() {
         mockWebServer.enqueue(
             MockResponse()
                 .setResponseCode(200)
@@ -152,11 +152,11 @@ class WorkerExecutionIntegrationTest {
         workerExecutionService.execute(jobId)
 
         val updated = jobRepository.findById(jobId).orElseThrow()
-        assertEquals(JobStatus.FAILED, updated.status)
+        assertEquals(JobStatus.SUCCEEDED, updated.status)
 
         val result = jobResultRepository.findByJobId(jobId)
-        assertEquals(JobErrorCode.INTERNAL, result?.errorCode)
-        assertEquals(WorkerProcessRunner.COMPLETED_WITHOUT_RESULT_MESSAGE, result?.errorMessage)
+        assertNull(result?.errorCode)
+        assertNull(result?.errorMessage)
         assertNull(result?.resultPayload)
     }
 

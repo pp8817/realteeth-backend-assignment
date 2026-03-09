@@ -1,7 +1,6 @@
 package ai.realteeth.imagejobserver.job.controller
 
 import ai.realteeth.imagejobserver.job.domain.JobEntity
-import ai.realteeth.imagejobserver.job.domain.JobErrorCode
 import ai.realteeth.imagejobserver.job.domain.JobStatus
 import ai.realteeth.imagejobserver.job.repository.JobJpaRepository
 import ai.realteeth.imagejobserver.job.repository.JobResultJpaRepository
@@ -143,7 +142,7 @@ class JobControllerIntegrationTest {
     }
 
     @Test
-    fun `INTERNAL FAILED job의 result 조회는 실패 응답을 반환한다`() {
+    fun `SUCCEEDED 이고 result payload가 null이면 result 조회는 null 성공 응답을 반환한다`() {
         val job = jobRepository.saveAndFlush(
             JobEntity(
                 id = UUID.randomUUID(),
@@ -153,10 +152,9 @@ class JobControllerIntegrationTest {
             ),
         )
 
-        jobService.completeFailed(
+        jobService.completeSucceeded(
             jobId = job.id,
-            errorCode = JobErrorCode.INTERNAL,
-            message = "Mock Worker returned COMPLETED without result",
+            payload = null,
         )
 
         val response = mockMvc.perform(get("/jobs/{jobId}/result", job.id))
@@ -164,7 +162,7 @@ class JobControllerIntegrationTest {
             .andReturn()
 
         val json = objectMapper.readTree(response.response.contentAsString)
-        assertEquals("INTERNAL", json.path("errorCode").asText())
-        assertEquals("Mock Worker returned COMPLETED without result", json.path("message").asText())
+        assertEquals(true, json.has("result"))
+        assertEquals(true, json.path("result").isNull)
     }
 }

@@ -134,7 +134,7 @@ class WorkerClaimLeasePostgresIntegrationTest : PostgresContainerSupport() {
     }
 
     @Test
-    fun `claim한 queued job이 poll-ready 이후 COMPLETED null result를 받으면 INTERNAL FAILED로 완료된다`() {
+    fun `claim한 queued job이 poll-ready 이후 COMPLETED null result를 받으면 SUCCEEDED로 완료된다`() {
         val jobId = insertQueuedJob()
 
         val claimed = workerClaimRepository.claimQueuedJobs(
@@ -177,15 +177,15 @@ class WorkerClaimLeasePostgresIntegrationTest : PostgresContainerSupport() {
 
         workerExecutionService.execute(jobId)
 
-        val failed = jobRepository.findById(jobId).orElseThrow()
-        assertEquals(JobStatus.FAILED, failed.status)
-        assertNull(failed.lockedBy)
-        assertNull(failed.lockedUntil)
-        assertNull(failed.nextPollAt)
+        val completed = jobRepository.findById(jobId).orElseThrow()
+        assertEquals(JobStatus.SUCCEEDED, completed.status)
+        assertNull(completed.lockedBy)
+        assertNull(completed.lockedUntil)
+        assertNull(completed.nextPollAt)
 
         val result = jobResultRepository.findByJobId(jobId)
-        assertEquals(JobErrorCode.INTERNAL, result?.errorCode)
-        assertEquals(WorkerProcessRunner.COMPLETED_WITHOUT_RESULT_MESSAGE, result?.errorMessage)
+        assertNull(result?.errorCode)
+        assertNull(result?.errorMessage)
         assertNull(result?.resultPayload)
     }
 

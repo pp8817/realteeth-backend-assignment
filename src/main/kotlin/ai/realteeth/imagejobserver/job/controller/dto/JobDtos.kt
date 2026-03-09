@@ -31,7 +31,7 @@ data class PendingResultResponse(
 )
 
 data class SuccessResultResponse(
-    val result: String,
+    val result: String?,
 )
 
 data class FailureResultResponse(

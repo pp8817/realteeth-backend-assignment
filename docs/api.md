@@ -77,7 +77,7 @@ If not finished:
 If finished and succeeded (200 OK):
 ```json
 {
-  "result": "string"
+  "result": "string|null"
 }
 ```
 

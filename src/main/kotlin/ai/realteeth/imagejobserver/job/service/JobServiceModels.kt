@@ -25,7 +25,7 @@ data class PendingJobResultView(
 )
 
 data class SuccessJobResultView(
-    val result: String,
+    val result: String?,
 )
 
 data class FailureJobResultView(
