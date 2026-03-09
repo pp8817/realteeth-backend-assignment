@@ -10,6 +10,7 @@ import ai.realteeth.imagejobserver.worker.repository.WorkerClaimRepository
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
@@ -70,6 +71,16 @@ class WorkerExecutionIntegrationTest {
 
         workerExecutionService.execute(jobId)
 
+        val scheduled = jobRepository.findById(jobId).orElseThrow()
+        assertEquals(JobStatus.RUNNING, scheduled.status)
+        assertEquals("ext-1", scheduled.externalJobId)
+        assertNotNull(scheduled.nextPollAt)
+        assertNull(scheduled.lockedBy)
+        assertNull(scheduled.lockedUntil)
+
+        reclaimForPoll(jobId)
+        workerExecutionService.execute(jobId)
+
         val updated = jobRepository.findById(jobId).orElseThrow()
         assertEquals(JobStatus.SUCCEEDED, updated.status)
 
@@ -95,6 +106,14 @@ class WorkerExecutionIntegrationTest {
 
         val jobId = insertRunningJob()
 
+        workerExecutionService.execute(jobId)
+
+        val scheduled = jobRepository.findById(jobId).orElseThrow()
+        assertEquals(JobStatus.RUNNING, scheduled.status)
+        assertEquals("ext-2", scheduled.externalJobId)
+        assertNotNull(scheduled.nextPollAt)
+
+        reclaimForPoll(jobId)
         workerExecutionService.execute(jobId)
 
         val updated = jobRepository.findById(jobId).orElseThrow()
@@ -128,6 +147,15 @@ class WorkerExecutionIntegrationTest {
 
         val jobId = insertRunningJob()
 
+        workerExecutionService.execute(jobId)
+
+        val scheduled = jobRepository.findById(jobId).orElseThrow()
+        assertEquals(JobStatus.RUNNING, scheduled.status)
+        assertEquals("ext-3", scheduled.externalJobId)
+        assertTrue(scheduled.attemptCount >= 1)
+        assertNotNull(scheduled.nextPollAt)
+
+        reclaimForPoll(jobId)
         workerExecutionService.execute(jobId)
 
         val updated = jobRepository.findById(jobId).orElseThrow()
@@ -167,9 +195,9 @@ class WorkerExecutionIntegrationTest {
 
         mockWebServer.enqueue(
             MockResponse()
-                .setResponseCode(200)
+                .setResponseCode(500)
                 .addHeader("Content-Type", "application/json")
-                .setBody("{\"jobId\":\"ext-lease-lost\",\"status\":\"PROCESSING\"}"),
+                .setBody("{\"detail\":\"temporary error\"}"),
         )
 
         val jobId = insertRunningJob()
@@ -178,7 +206,7 @@ class WorkerExecutionIntegrationTest {
 
         val updated = jobRepository.findById(jobId).orElseThrow()
         assertEquals(JobStatus.RUNNING, updated.status)
-        assertEquals("ext-lease-lost", updated.externalJobId)
+        assertNull(updated.externalJobId)
         assertNull(jobResultRepository.findByJobId(jobId))
     }
 
@@ -189,9 +217,9 @@ class WorkerExecutionIntegrationTest {
 
         mockWebServer.enqueue(
             MockResponse()
-                .setResponseCode(200)
+                .setResponseCode(500)
                 .addHeader("Content-Type", "application/json")
-                .setBody("{\"jobId\":\"ext-lease-exception\",\"status\":\"PROCESSING\"}"),
+                .setBody("{\"detail\":\"temporary error\"}"),
         )
 
         val jobId = insertRunningJob()
@@ -200,7 +228,7 @@ class WorkerExecutionIntegrationTest {
 
         val updated = jobRepository.findById(jobId).orElseThrow()
         assertEquals(JobStatus.RUNNING, updated.status)
-        assertEquals("ext-lease-exception", updated.externalJobId)
+        assertNull(updated.externalJobId)
         assertNull(jobResultRepository.findByJobId(jobId))
     }
 
@@ -213,28 +241,15 @@ class WorkerExecutionIntegrationTest {
         workerProperties.statusPollIntervalMs = 50
 
         try {
-            mockWebServer.enqueue(
-                MockResponse()
-                    .setResponseCode(200)
-                    .addHeader("Content-Type", "application/json")
-                    .setBody("{\"jobId\":\"ext-timeout-loop\",\"status\":\"PROCESSING\"}"),
+            val jobId = insertRunningJob(
+                processingStartedAt = Instant.now().minusSeconds(5),
             )
-            repeat(200) {
-                mockWebServer.enqueue(
-                    MockResponse()
-                        .setResponseCode(200)
-                        .addHeader("Content-Type", "application/json")
-                        .setBody("{\"jobId\":\"ext-timeout-loop\",\"status\":\"PROCESSING\",\"result\":null}"),
-                )
-            }
-
-            val jobId = insertRunningJob()
 
             workerExecutionService.execute(jobId)
 
             val updated = jobRepository.findById(jobId).orElseThrow()
             assertEquals(JobStatus.RUNNING, updated.status)
-            assertEquals("ext-timeout-loop", updated.externalJobId)
+            assertNull(updated.externalJobId)
             assertNull(jobResultRepository.findByJobId(jobId))
         } finally {
             workerProperties.maxProcessingSeconds = originalMaxProcessingSeconds
@@ -242,7 +257,9 @@ class WorkerExecutionIntegrationTest {
         }
     }
 
-    private fun insertRunningJob(): UUID {
+    private fun insertRunningJob(
+        processingStartedAt: Instant = Instant.now(),
+    ): UUID {
         val entity = JobEntity(
             id = UUID.randomUUID(),
             status = JobStatus.RUNNING,
@@ -250,8 +267,17 @@ class WorkerExecutionIntegrationTest {
             attemptCount = 0,
             lockedBy = "worker-1",
             lockedUntil = Instant.now().plusSeconds(60),
+            processingStartedAt = processingStartedAt,
         )
         return jobRepository.saveAndFlush(entity).id
+    }
+
+    private fun reclaimForPoll(jobId: UUID) {
+        val job = jobRepository.findById(jobId).orElseThrow()
+        job.lockedBy = "worker-1"
+        job.lockedUntil = Instant.now().plusSeconds(60)
+        job.nextPollAt = null
+        jobRepository.saveAndFlush(job)
     }
 
     companion object {

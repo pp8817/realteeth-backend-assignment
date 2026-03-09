@@ -56,7 +56,7 @@ class WorkerClaimLeasePostgresIntegrationTest : PostgresContainerSupport() {
     }
 
     @Test
-    fun `claim한 queued job은 execute 이후 SUCCEEDED로 완료되고 결과가 저장된다`() {
+    fun `claim한 queued job은 next_poll_at으로 재스케줄된 뒤 poll-ready claim을 거쳐 SUCCEEDED로 완료된다`() {
         val jobId = insertQueuedJob()
 
         val claimed = workerClaimRepository.claimQueuedJobs(
@@ -70,6 +70,7 @@ class WorkerClaimLeasePostgresIntegrationTest : PostgresContainerSupport() {
         assertEquals(JobStatus.RUNNING, running.status)
         assertEquals("worker-1", running.lockedBy)
         assertNotNull(running.lockedUntil)
+        assertNotNull(running.processingStartedAt)
 
         mockWebServer.enqueue(
             MockResponse()
@@ -77,12 +78,41 @@ class WorkerClaimLeasePostgresIntegrationTest : PostgresContainerSupport() {
                 .addHeader("Content-Type", "application/json")
                 .setBody("{\"jobId\":\"ext-success-1\",\"status\":\"PROCESSING\"}"),
         )
+
+        workerExecutionService.execute(jobId)
+
+        val scheduled = jobRepository.findById(jobId).orElseThrow()
+        assertEquals(JobStatus.RUNNING, scheduled.status)
+        assertEquals("ext-success-1", scheduled.externalJobId)
+        assertNull(scheduled.lockedBy)
+        assertNull(scheduled.lockedUntil)
+        assertNotNull(scheduled.nextPollAt)
+        assertNull(jobResultRepository.findByJobId(jobId))
+
+        val noClaimBeforeDue = workerClaimRepository.claimPollReadyRunningJobs(
+            workerId = "worker-1",
+            leaseSeconds = 30,
+            batchSize = 5,
+        )
+        assertFalse(noClaimBeforeDue.contains(jobId))
+
+        val due = jobRepository.findById(jobId).orElseThrow()
+        due.nextPollAt = Instant.now().minusSeconds(1)
+        jobRepository.saveAndFlush(due)
+
         mockWebServer.enqueue(
             MockResponse()
                 .setResponseCode(200)
                 .addHeader("Content-Type", "application/json")
                 .setBody("{\"jobId\":\"ext-success-1\",\"status\":\"COMPLETED\",\"result\":\"done\"}"),
         )
+
+        val pollClaimed = workerClaimRepository.claimPollReadyRunningJobs(
+            workerId = "worker-1",
+            leaseSeconds = 30,
+            batchSize = 5,
+        )
+        assertTrue(pollClaimed.contains(jobId))
 
         workerExecutionService.execute(jobId)
 
@@ -91,6 +121,7 @@ class WorkerClaimLeasePostgresIntegrationTest : PostgresContainerSupport() {
         assertEquals("ext-success-1", completed.externalJobId)
         assertNull(completed.lockedBy)
         assertNull(completed.lockedUntil)
+        assertNull(completed.nextPollAt)
 
         val result = jobResultRepository.findByJobId(jobId)
         assertEquals("done", result?.resultPayload)
@@ -126,6 +157,7 @@ class WorkerClaimLeasePostgresIntegrationTest : PostgresContainerSupport() {
         assertEquals(2, requeuedJob.attemptCount)
         assertNull(requeuedJob.lockedBy)
         assertNull(requeuedJob.lockedUntil)
+        assertNull(requeuedJob.nextPollAt)
 
         val maxedOutJob = jobRepository.findById(staleMaxedOut).orElseThrow()
         assertEquals(JobStatus.RUNNING, maxedOutJob.status)
@@ -199,6 +231,7 @@ class WorkerClaimLeasePostgresIntegrationTest : PostgresContainerSupport() {
             attemptCount = attemptCount,
             lockedBy = "worker-1",
             lockedUntil = lockedUntil,
+            processingStartedAt = Instant.now(),
         )
         return jobRepository.saveAndFlush(entity).id
     }
