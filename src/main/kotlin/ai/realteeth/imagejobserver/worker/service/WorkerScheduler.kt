@@ -58,24 +58,59 @@ class WorkerScheduler(
             return
         }
 
-        val claimed = workerClaimRepository.claimQueuedJobs(
+        val reservedPollReadySlots = min(availableSlots, maxOf(1, availableSlots / 2))
+        val reservedQueuedSlots = (availableSlots - reservedPollReadySlots).coerceAtLeast(0)
+
+        val pollReadyClaimed = workerClaimRepository.claimPollReadyRunningJobs(
             workerId = workerProperties.id,
             leaseSeconds = workerProperties.leaseSeconds,
-            batchSize = min(workerProperties.batchSize, availableSlots),
+            batchSize = reservedPollReadySlots,
         )
-        dispatch(claimed)
+        dispatch(pollReadyClaimed)
 
-        val remainingSlots = (availableSlots - claimed.size).coerceAtLeast(0)
+        var remainingSlots = availableSlots - pollReadyClaimed.size
         if (remainingSlots == 0) {
             return
         }
 
-        val pollReady = workerClaimRepository.claimPollReadyRunningJobs(
-            workerId = workerProperties.id,
-            leaseSeconds = workerProperties.leaseSeconds,
-            batchSize = min(workerProperties.batchSize, remainingSlots),
-        )
-        dispatch(pollReady)
+        val queuedClaimed = if (reservedQueuedSlots > 0) {
+            workerClaimRepository.claimQueuedJobs(
+                workerId = workerProperties.id,
+                leaseSeconds = workerProperties.leaseSeconds,
+                batchSize = min(reservedQueuedSlots, remainingSlots),
+            )
+        } else {
+            emptyList()
+        }
+        dispatch(queuedClaimed)
+
+        remainingSlots -= queuedClaimed.size
+        if (remainingSlots == 0) {
+            return
+        }
+
+        if (pollReadyClaimed.size < reservedPollReadySlots) {
+            val extraQueued = workerClaimRepository.claimQueuedJobs(
+                workerId = workerProperties.id,
+                leaseSeconds = workerProperties.leaseSeconds,
+                batchSize = remainingSlots,
+            )
+            dispatch(extraQueued)
+            remainingSlots -= extraQueued.size
+        }
+
+        if (remainingSlots == 0) {
+            return
+        }
+
+        if (queuedClaimed.size < reservedQueuedSlots || reservedQueuedSlots == 0) {
+            val extraPollReady = workerClaimRepository.claimPollReadyRunningJobs(
+                workerId = workerProperties.id,
+                leaseSeconds = workerProperties.leaseSeconds,
+                batchSize = remainingSlots,
+            )
+            dispatch(extraPollReady)
+        }
     }
 
     private fun dispatch(jobIds: List<UUID>) {
