@@ -90,4 +90,19 @@ class JobControllerIntegrationTest {
         mockMvc.perform(get("/jobs/{jobId}/result", jobId))
             .andExpect(status().isInternalServerError)
     }
+
+    @Test
+    fun `list jobs의 page가 음수면 400을 반환한다`() {
+        mockMvc.perform(get("/jobs").param("page", "-1"))
+            .andExpect(status().isBadRequest)
+    }
+
+    @Test
+    fun `list jobs의 size가 범위를 벗어나면 400을 반환한다`() {
+        mockMvc.perform(get("/jobs").param("size", "0"))
+            .andExpect(status().isBadRequest)
+
+        mockMvc.perform(get("/jobs").param("size", "101"))
+            .andExpect(status().isBadRequest)
+    }
 }

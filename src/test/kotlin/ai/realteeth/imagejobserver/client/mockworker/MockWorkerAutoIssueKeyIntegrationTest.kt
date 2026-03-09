@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
@@ -97,6 +98,76 @@ class MockWorkerAutoIssueKeyIntegrationTest {
         val response = mockWorkerClient.startProcess("https://example.com/configured.png")
 
         assertEquals(MockWorkerJobStatus.PROCESSING, response.status)
+
+        val processRequest = mockWebServer.takeRequest(1, TimeUnit.SECONDS)
+        val noMore = mockWebServer.takeRequest(300, TimeUnit.MILLISECONDS)
+
+        assertEquals("/mock/process", processRequest?.path)
+        assertEquals("mock_configured_key", processRequest?.getHeader("X-API-KEY"))
+        assertNull(noMore)
+    }
+
+    @Test
+    fun `자동 발급 key가 401이면 캐시 무효화 후 1회 재발급해 재시도한다`() {
+        mockWebServer.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .addHeader("Content-Type", "application/json")
+                .setBody("{\"apiKey\":\"mock_old_key\"}"),
+        )
+        mockWebServer.enqueue(
+            MockResponse()
+                .setResponseCode(401)
+                .addHeader("Content-Type", "application/json")
+                .setBody("{\"detail\":\"expired key\"}"),
+        )
+        mockWebServer.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .addHeader("Content-Type", "application/json")
+                .setBody("{\"apiKey\":\"mock_new_key\"}"),
+        )
+        mockWebServer.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .addHeader("Content-Type", "application/json")
+                .setBody("{\"jobId\":\"ext-recovered\",\"status\":\"PROCESSING\"}"),
+        )
+
+        val response = mockWorkerClient.startProcess("https://example.com/recover.png")
+
+        assertEquals(MockWorkerJobStatus.PROCESSING, response.status)
+
+        val issueRequest1 = mockWebServer.takeRequest(1, TimeUnit.SECONDS)
+        val processRequest1 = mockWebServer.takeRequest(1, TimeUnit.SECONDS)
+        val issueRequest2 = mockWebServer.takeRequest(1, TimeUnit.SECONDS)
+        val processRequest2 = mockWebServer.takeRequest(1, TimeUnit.SECONDS)
+        val noMore = mockWebServer.takeRequest(300, TimeUnit.MILLISECONDS)
+
+        assertEquals("/mock/auth/issue-key", issueRequest1?.path)
+        assertEquals("mock_old_key", processRequest1?.getHeader("X-API-KEY"))
+        assertEquals("/mock/auth/issue-key", issueRequest2?.path)
+        assertEquals("mock_new_key", processRequest2?.getHeader("X-API-KEY"))
+        assertNull(noMore)
+    }
+
+    @Test
+    fun `설정된 api key가 401이면 재발급 없이 UNAUTHORIZED로 실패한다`() {
+        mockWorkerProperties.apiKey = "mock_configured_key"
+        mockWorkerProperties.autoIssueEnabled = false
+
+        mockWebServer.enqueue(
+            MockResponse()
+                .setResponseCode(401)
+                .addHeader("Content-Type", "application/json")
+                .setBody("{\"detail\":\"invalid configured key\"}"),
+        )
+
+        val exception = assertThrows<MockWorkerException> {
+            mockWorkerClient.startProcess("https://example.com/configured-401.png")
+        }
+
+        assertEquals("invalid configured key", exception.message)
 
         val processRequest = mockWebServer.takeRequest(1, TimeUnit.SECONDS)
         val noMore = mockWebServer.takeRequest(300, TimeUnit.MILLISECONDS)

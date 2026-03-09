@@ -4,13 +4,6 @@ import ai.realteeth.imagejobserver.global.exception.DataIntegrityException
 import ai.realteeth.imagejobserver.global.exception.ResourceNotFoundException
 import ai.realteeth.imagejobserver.global.util.HashUtils
 import ai.realteeth.imagejobserver.global.util.ProgressMapper
-import ai.realteeth.imagejobserver.job.controller.dto.CreateJobResponse
-import ai.realteeth.imagejobserver.job.controller.dto.FailureResultResponse
-import ai.realteeth.imagejobserver.job.controller.dto.JobListItemResponse
-import ai.realteeth.imagejobserver.job.controller.dto.JobListResponse
-import ai.realteeth.imagejobserver.job.controller.dto.JobStatusResponse
-import ai.realteeth.imagejobserver.job.controller.dto.PendingResultResponse
-import ai.realteeth.imagejobserver.job.controller.dto.SuccessResultResponse
 import ai.realteeth.imagejobserver.job.domain.JobEntity
 import ai.realteeth.imagejobserver.job.domain.JobErrorCode
 import ai.realteeth.imagejobserver.job.domain.JobResultEntity
@@ -33,7 +26,7 @@ class JobService(
 ) {
 
     @Transactional
-    fun createJob(imageUrl: String, idempotencyKey: String?): CreateJobResponse {
+    fun createJob(imageUrl: String, idempotencyKey: String?): CreateJobResult {
         val normalizedKey = idempotencyKey?.trim()?.takeIf { it.isNotBlank() }
         val fingerprint = HashUtils.sha256(imageUrl)
 
@@ -45,7 +38,7 @@ class JobService(
         )
 
         if (!insertResult.created) {
-            return CreateJobResponse(
+            return CreateJobResult(
                 jobId = insertResult.jobId,
                 status = insertResult.status,
                 deduped = true,
@@ -58,13 +51,13 @@ class JobService(
         newJob.status = JobStatus.QUEUED
         jobRepository.save(newJob)
 
-        return CreateJobResponse(jobId = newJob.id, status = JobStatus.RECEIVED, deduped = false)
+        return CreateJobResult(jobId = newJob.id, status = JobStatus.RECEIVED, deduped = false)
     }
 
     @Transactional(readOnly = true)
-    fun getJobStatus(jobId: UUID): JobStatusResponse {
+    fun getJobStatus(jobId: UUID): JobStatusView {
         val job = getJobOrThrow(jobId)
-        return JobStatusResponse(
+        return JobStatusView(
             jobId = job.id,
             status = job.status,
             progress = ProgressMapper.toProgress(job.status),
@@ -83,25 +76,25 @@ class JobService(
                 val result = jobResultRepository.findByJobId(job.id)
                     ?.resultPayload
                     ?: throw DataIntegrityException("Job result missing for succeeded job: $jobId")
-                JobResultView.Success(SuccessResultResponse(result))
+                JobResultView.Success(SuccessJobResultView(result))
             }
 
             JobStatus.FAILED -> {
                 val result = jobResultRepository.findByJobId(job.id)
                 JobResultView.Failure(
-                    FailureResultResponse(
+                    FailureJobResultView(
                         errorCode = result?.errorCode ?: JobErrorCode.INTERNAL,
                         message = result?.errorMessage ?: "Job failed",
                     ),
                 )
             }
 
-            else -> JobResultView.Pending(PendingResultResponse(job.status))
+            else -> JobResultView.Pending(PendingJobResultView(job.status))
         }
     }
 
     @Transactional(readOnly = true)
-    fun listJobs(page: Int, size: Int, status: JobStatus?): JobListResponse {
+    fun listJobs(page: Int, size: Int, status: JobStatus?): JobListView {
         val pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"))
         val paged = if (status == null) {
             jobRepository.findAll(pageable)
@@ -109,12 +102,12 @@ class JobService(
             jobRepository.findAllByStatus(status, pageable)
         }
 
-        return JobListResponse(
+        return JobListView(
             page = page,
             size = size,
             total = paged.totalElements,
             items = paged.content.map {
-                JobListItemResponse(
+                JobListItemView(
                     jobId = it.id,
                     status = it.status,
                     progress = ProgressMapper.toProgress(it.status),
@@ -197,11 +190,5 @@ class JobService(
     private fun getJobOrThrow(jobId: UUID): JobEntity {
         return jobRepository.findById(jobId)
             .orElseThrow { ResourceNotFoundException("Job not found: $jobId") }
-    }
-
-    sealed interface JobResultView {
-        data class Pending(val value: PendingResultResponse) : JobResultView
-        data class Success(val value: SuccessResultResponse) : JobResultView
-        data class Failure(val value: FailureResultResponse) : JobResultView
     }
 }

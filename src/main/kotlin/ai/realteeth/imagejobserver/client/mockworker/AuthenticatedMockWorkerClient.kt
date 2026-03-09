@@ -3,6 +3,7 @@ package ai.realteeth.imagejobserver.client.mockworker
 import ai.realteeth.imagejobserver.client.mockworker.dto.IssueKeyResponse
 import ai.realteeth.imagejobserver.client.mockworker.dto.ProcessStartResponse
 import ai.realteeth.imagejobserver.client.mockworker.dto.ProcessStatusResponse
+import ai.realteeth.imagejobserver.job.domain.JobErrorCode
 import org.springframework.stereotype.Component
 
 @Component
@@ -16,8 +17,23 @@ class AuthenticatedMockWorkerClient(
     }
 
     override fun startProcess(imageUrl: String): ProcessStartResponse {
+        val configuredKey = mockApiKeyProvider.hasConfiguredApiKey()
         val apiKey = mockApiKeyProvider.resolveApiKey()
-        return rawMockWorkerApiClient.startProcess(imageUrl, apiKey)
+
+        return try {
+            rawMockWorkerApiClient.startProcess(imageUrl, apiKey)
+        } catch (ex: MockWorkerException) {
+            if (configuredKey || ex.errorCode != JobErrorCode.UNAUTHORIZED || apiKey.isNullOrBlank()) {
+                throw ex
+            }
+
+            val refreshedApiKey = mockApiKeyProvider.refreshIssuedApiKey()
+            if (refreshedApiKey.isNullOrBlank()) {
+                throw ex
+            }
+
+            rawMockWorkerApiClient.startProcess(imageUrl, refreshedApiKey)
+        }
     }
 
     override fun getProcessStatus(externalJobId: String): ProcessStatusResponse {

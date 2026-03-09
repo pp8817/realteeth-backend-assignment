@@ -16,6 +16,8 @@ class MockApiKeyProvider(
         cachedIssuedApiKey.set(null)
     }
 
+    fun hasConfiguredApiKey(): Boolean = properties.apiKey.trim().isNotBlank()
+
     fun resolveApiKey(): String? {
         val configured = properties.apiKey.trim()
         if (configured.isNotBlank()) {
@@ -30,6 +32,19 @@ class MockApiKeyProvider(
 
         synchronized(this) {
             cachedIssuedApiKey.get()?.takeIf { it.isNotBlank() }?.let { return it }
+            val issued = issueKey()
+            cachedIssuedApiKey.set(issued)
+            return issued
+        }
+    }
+
+    fun refreshIssuedApiKey(): String? {
+        if (hasConfiguredApiKey() || !properties.autoIssueEnabled) {
+            return null
+        }
+
+        synchronized(this) {
+            cachedIssuedApiKey.set(null)
             val issued = issueKey()
             cachedIssuedApiKey.set(issued)
             return issued
