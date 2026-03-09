@@ -21,6 +21,12 @@ class WorkerScheduler(
     @Qualifier("workerTaskExecutor") private val workerTaskExecutor: ThreadPoolTaskExecutor,
 ) {
 
+    internal data class WorkerDispatchCapacity(
+        val activeCount: Int,
+        val queuedTaskCount: Int,
+        val availableSlots: Int,
+    )
+
     private val log = LoggerFactory.getLogger(javaClass)
 
     @Scheduled(fixedDelayString = "\${app.worker.poll-interval-ms:1000}")
@@ -53,11 +59,12 @@ class WorkerScheduler(
             log.info("Requeued {} stale jobs", stale.size)
         }
 
-        val availableSlots = (workerProperties.threads - workerTaskExecutor.activeCount).coerceAtLeast(0)
-        if (availableSlots == 0) {
+        val dispatchCapacity = currentDispatchCapacity()
+        if (dispatchCapacity.availableSlots == 0) {
             return
         }
 
+        val availableSlots = dispatchCapacity.availableSlots
         val reservedPollReadySlots = min(availableSlots, maxOf(1, availableSlots / 2))
         val reservedQueuedSlots = (availableSlots - reservedPollReadySlots).coerceAtLeast(0)
 
@@ -119,5 +126,27 @@ class WorkerScheduler(
                 workerExecutionService.execute(jobId)
             }
         }
+    }
+
+    private fun currentDispatchCapacity(): WorkerDispatchCapacity =
+        calculateDispatchCapacity(
+            threads = workerProperties.threads,
+            activeCount = workerTaskExecutor.activeCount,
+            queuedTaskCount = workerTaskExecutor.queueSize,
+        )
+
+    internal fun calculateDispatchCapacity(
+        threads: Int,
+        activeCount: Int,
+        queuedTaskCount: Int,
+    ): WorkerDispatchCapacity {
+        val normalizedActiveCount = activeCount.coerceAtLeast(0)
+        val normalizedQueuedTaskCount = queuedTaskCount.coerceAtLeast(0)
+        val availableSlots = (threads - normalizedActiveCount - normalizedQueuedTaskCount).coerceAtLeast(0)
+        return WorkerDispatchCapacity(
+            activeCount = normalizedActiveCount,
+            queuedTaskCount = normalizedQueuedTaskCount,
+            availableSlots = availableSlots,
+        )
     }
 }

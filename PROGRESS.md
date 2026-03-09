@@ -322,8 +322,10 @@ Completed:
 - `next_poll_at` / `processing_started_at` 기반 비블로킹 워커 재스케줄 폴링 도입
 - `RUNNING + next_poll_at <= now` 재클레임 SQL 및 테스트 반영
 - `poll-ready RUNNING` starvation 방지를 위한 slot reservation 스케줄링 적용
+- executor queue 점유량까지 반영해 scheduler 과다 claim을 방지하는 capacity 보호 적용
 - 기존 DB 볼륨 재사용 시 polling 컬럼을 보강하는 idempotent schema init 적용
 - `WorkerSchedulerTest`, `SchemaSqlMigrationSmokeTest` 추가
+- `bootJar` classpath에 worker/schema SQL 파일이 포함되는 패키징 회귀 테스트 추가
 
 In Progress:
 - None

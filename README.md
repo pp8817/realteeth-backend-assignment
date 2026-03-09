@@ -72,6 +72,7 @@
 - 워커 동시 실행 수 제한(스레드풀/벌크헤드)
 - `FOR UPDATE SKIP LOCKED` 기반 claim
 - `poll-ready RUNNING`과 신규 `QUEUED`를 slot reservation으로 균형 배분해 완료 확인 starvation 방지
+- scheduler claim 수를 executor `active + queue` 점유량 기준으로 제한해 아직 실행되지 않은 lease 누적 방지
 - 재시도 + 백오프
 - claim/requeue 배치 크기 제한(`batch_size`)
 - 상태 폴링 간격 분리(`APP_WORKER_STATUS_POLL_INTERVAL_MS`)와 `next_poll_at` 기반 DB 재스케줄로 외부 조회 부하와 worker thread 점유를 제어

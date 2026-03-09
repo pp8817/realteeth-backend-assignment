@@ -65,6 +65,7 @@ We use DB-based queue with SKIP LOCKED:
 - If Mock Worker returns PROCESSING, worker releases lease, stores `next_poll_at`, and exits.
 - Scheduler later re-claims RUNNING jobs with `next_poll_at <= now` and performs the next poll.
 - Scheduler reserves 일부 slot을 `poll-ready RUNNING`용으로 먼저 확보하고, 남는 slot으로 `QUEUED`를 claim한 뒤, 미사용 예약분은 반대편으로 재할당한다.
+- Scheduler capacity is capped by executor `activeCount + queueSize`, so claimed jobs do not pile up behind already queued worker tasks.
 - If lease heartbeat fails (DB error or lease lost), worker safely abandons current execution and lets stale recovery re-claim the job.
 - If processing exceeds `APP_WORKER_MAX_PROCESSING_SECONDS` (default 1800), worker also abandons and defers to stale recovery.
 
